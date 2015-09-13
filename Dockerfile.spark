@@ -1,0 +1,49 @@
+# VERSION               0.1
+#
+
+FROM vardhanv/cassandra
+
+
+#
+# Most of these variables should be moved to config files
+# SPARK_DIST_CLASSPATH should be setup using $(hadoop classpath) and put into 
+# spark_env.sh. Some of the code we need is as below for future reference.... 
+#
+# echo 'export  SPARK_DIST_CLASSPATH=$(hadoop classpath)' >> spark-env.sh
+#. $HADOOP_PREFIX/etc/hadoop/hadoop-env.sh
+#. $SPARK_HOME/conf/spark-env.sh
+#
+
+
+ENV  JAVA_HOME=/usr/lib/jvm/java-8-oracle
+ENV  HADOOP_PREFIX=/usr/local/hadoop
+ENV  HADOOP_COMMON_HOME=/usr/local/hadoop 
+ENV  HADOOP_HOME=/usr/local/hadoop 
+ENV  HADOOP_HDFS_HOME=/usr/local/hadoop 
+ENV  HADOOP_MAPRED_HOME=/usr/local/hadoop 
+ENV  HADOOP_YARN_HOME=/usr/local/hadoop 
+ENV  HADOOP_CONF_DIR=/usr/local/hadoop/etc/hadoop 
+ENV  YARN_CONF_DIR=$HADOOP_PREFIX/etc/hadoop 
+ENV  SPARK_HOME=/usr/local/spark 
+ENV  PATH=$PATH:$JAVA_HOME/bin:$HADOOP_PREFIX/bin:$SPARK_HOME/bin:$SPARK_HOME/sbin
+ENV  SPARK_DIST_CLASSPATH=/usr/local/hadoop/etc/hadoop:/usr/local/hadoop/share/hadoop/common/lib/*:/usr/local/hadoop/share/hadoop/common/*:/usr/local/hadoop/share/hadoop/hdfs:/usr/local/hadoop/share/hadoop/hdfs/lib/*:/usr/local/hadoop/share/hadoop/hdfs/*:/usr/local/hadoop/share/hadoop/yarn/lib/*:/usr/local/hadoop/share/hadoop/yarn/*:/usr/local/hadoop/share/hadoop/mapreduce/lib/*:/usr/local/hadoop/share/hadoop/mapreduce/*:/usr/local/hadoop/contrib/capacity-scheduler/*.jar
+
+
+#installing hadoop
+RUN \
+    curl http://www.us.apache.org/dist/hadoop/common/hadoop-2.7.1/hadoop-2.7.1.tar.gz | tar -xvz -C /usr/local/ && \ 
+    cd /usr/local && ln -s ./hadoop-2.7.1 hadoop && \ 
+    mkdir $HADOOP_PREFIX/input && \
+    cp $HADOOP_PREFIX/etc/hadoop/*.xml $HADOOP_PREFIX/input
+
+
+# Installing spark
+
+RUN \ 
+    curl http://www.us.apache.org/dist//spark/spark-1.4.1/spark-1.4.1-bin-without-hadoop.tgz | tar -xvz -C /usr/local && \
+    cd /usr/local && ln -s spark-1.4.1-bin-without-hadoop spark && \ 
+    cd /usr/local/spark/conf/ && cp spark-env.sh.template spark-env.sh
+    #echo 'export  SPARK_DIST_CLASSPATH=$(hadoop classpath)' >> spark-env.sh
+
+
+ENTRYPOINT ["/bin/bash"]

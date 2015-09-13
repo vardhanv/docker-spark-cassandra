@@ -1,0 +1,78 @@
+# VERSION               0.1
+#
+
+FROM ubuntu
+RUN \ 
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq update -y && \
+  apt-get -qq install python-software-properties -y && \
+  apt-get -qq install software-properties-common -y && \ 
+  add-apt-repository ppa:webupd8team/java -y && \
+  apt-get -qq update
+
+
+# install Java
+RUN \  
+  export DEBIAN_FRONTEND=noninteractive && \
+  echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
+  apt-get -qq install oracle-java8-installer -y 
+
+# install ssh
+RUN \
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq install openssh-server -y
+
+# Get ready for cassandra
+RUN \ 
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq install curl -y && \ 
+  curl -L http://debian.datastax.com/debian/repo_key | apt-key add - && \
+  echo "deb http://debian.datastax.com/community stable main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
+
+# install cassandra
+RUN \ 
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq update -y && \
+  apt-get -qq install dsc20=2.0.11-1 cassandra=2.0.11 -y
+
+# install opscenter
+RUN \ 
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq install opscenter -y
+
+# install opscenter agent
+RUN \ 
+  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq install datastax-agent -y && \ 
+  echo "stomp_interface: 127.0.0.1" | sudo tee -a /var/lib/datastax-agent/conf/address.yaml
+
+RUN \ 
+  export DEBIAN_FRONTEND=noninteractive && \
+  service cassandra stop && \
+  rm -rf /var/lib/cassandra/data/system/*   
+
+# Expose ports for Opscenter
+EXPOSE  8888 22
+
+#SSH login fixes ---
+
+RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
+RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN echo 'root:docker' | chpasswd
+
+
+# create startup script
+RUN  \ 
+   echo service ssh start >> /startup_script  && \ 
+   echo service cassandra start >> /startup_script && \
+   echo service opscenterd start >> /startup_script && \
+   echo service datastax-agent start >> /startup_script && \
+   chmod +x /startup_script
+
+
+ENTRYPOINT ["/bin/bash"]
+
+
+# to start cassandra execute "service cassandra start"
+# to start opscenter execute "service opscenterd start"
+# to connect to opscenter connect to "http://localhost:8888"

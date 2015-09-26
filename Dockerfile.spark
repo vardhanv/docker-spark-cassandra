@@ -40,16 +40,19 @@ RUN \
 # Installing spark
 
 RUN \ 
-    curl http://www.us.apache.org/dist//spark/spark-1.4.1/spark-1.4.1-bin-without-hadoop.tgz | tar -xvz -C /usr/local && \
-    cd /usr/local && ln -s spark-1.4.1-bin-without-hadoop spark && \ 
-    cd /usr/local/spark/conf/ && cp spark-env.sh.template spark-env.sh
+    curl http://www.us.apache.org/dist//spark/spark-1.4.1/spark-1.4.1-bin-without-hadoop.tgz | tar -xvz -C /usr/local 
+
 
 
 
 # Be carefull, the SPARK_MASTER_IP needs to be reset for a slave node, other it will have the wrong ip address
 # the below only works if the master and slave are executing from the same node
 RUN \ 
-    cd /usr/local/spark/conf/ && echo "SPARK_DIST_CLASSPATH=$(hadoop classpath)" >> spark-env.sh \
+    cd /usr/local && ln -s spark-1.4.1-bin-without-hadoop spark &&\ 
+    cd /usr/local/spark/conf/ && cp spark-env.sh.template spark-env.sh &&\
+    cd /usr/local/spark/conf/ && cp log4j.properties.template log4j.properties &&\
+    cd /usr/local/spark/conf/ && sed -i 's/log4j.rootCategory=INFO/log4j.rootCategory=WARN/' log4j.properties &&\
+    cd /usr/local/spark/conf/ && echo "SPARK_DIST_CLASSPATH=$(hadoop classpath)" >> spark-env.sh &&\
     cd /usr/local/spark/conf/ && echo "SPARK_MASTER_IP=\$(ifconfig -a | awk '/inet addr/ {print substr(\$2,6)}'| grep -v "127.0.0.1")" >> spark-env.sh
 
 

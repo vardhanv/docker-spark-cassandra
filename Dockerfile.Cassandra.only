@@ -2,51 +2,58 @@
 #
 
 FROM ubuntu
+
+# install Java
 RUN \ 
   export DEBIAN_FRONTEND=noninteractive && \
   apt-get -qq update -y && \
   apt-get -qq install python-software-properties -y && \
   apt-get -qq install software-properties-common -y && \ 
   add-apt-repository ppa:webupd8team/java -y && \
-  apt-get -qq update
-
-
-# install Java
-RUN \  
-  export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq update && \
   echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
-  apt-get -qq install oracle-java8-installer -y 
+  apt-get -qq install oracle-java8-installer -y  && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # install ssh
 RUN \
   export DEBIAN_FRONTEND=noninteractive && \
-  apt-get -qq install openssh-server -y
+  apt-get -qq update -y && \
+  apt-get -qq install openssh-server -y && \
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Get ready for cassandra
 RUN \ 
   export DEBIAN_FRONTEND=noninteractive && \
+  apt-get -qq update -y && \
   echo "exit 0" > /usr/sbin/policy-rc.d && \
   apt-get -qq install curl -y && \ 
   curl -L http://debian.datastax.com/debian/repo_key | apt-key add - && \
-  echo "deb http://debian.datastax.com/community 2.2 main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
-
-# install cassandra
-RUN \ 
+  echo "deb http://debian.datastax.com/community 2.2 main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list && \ 
   export DEBIAN_FRONTEND=noninteractive && \
   apt-get -qq update -y && \
   apt-get -qq install dsc22=2.2.4-1 cassandra=2.2.4 -y && \
-  apt-get -qq install cassandra-tools=2.2.4
+  apt-get -qq install cassandra-tools=2.2.4 && \ 
+  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+
+# updating cassandra yaml, so we can be reached with an ipaddress apart from 127.0.0.1
 RUN \ 
   export DEBIAN_FRONTEND=noninteractive && \
   service cassandra stop && \
+  sed -i 's/listen_address: localhost/#listen_address: localhost/' /etc/cassandra/cassandra.yaml    && \
+  sed -i 's/# listen_interface: eth0/listen_interface: eth0/'      /etc/cassandra/cassandra.yaml    && \
+  sed -i 's/rpc_address: localhost/# rpc_address: localhost/'      /etc/cassandra/cassandra.yaml    && \
+  export LOCAL_IP=\"`ifconfig eth0 | grep "inet addr" | tr -s ' ' ' ' | cut -d ' ' -f 3 | cut -d ':' -f2`\"  &&\
+  sed -i "s/ - seeds: \"127.0.0.1\"/ - seeds: $LOCAL_IP/"         /etc/cassandra/cassandra.yaml       && \
   rm -rf /var/lib/cassandra/data/system/*   
 
 #SSH login fixes ---
 
-RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd
-RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN echo 'root:docker' | chpasswd
+RUN \
+  sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd && \
+  sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+  echo 'root:docker' | chpasswd
 
 
 # create startup script
